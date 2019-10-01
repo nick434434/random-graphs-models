@@ -144,7 +144,7 @@ vector<double> generate_poisson_function(double lmbd, long start, long end, long
 }
 
 
-void construct_plot(int N_trials, double lmbd, int N_start, int N_step, int num_iters) {
+void construct_plot(int N_trials, double lmbd, int N_start, int N_step, int num_iters, std::string folder) {
     vector<pair<vector<int>, vector<long>>> results(N_trials);
 
     for (int i = 0; i < N_trials; ++i)
@@ -166,6 +166,8 @@ void construct_plot(int N_trials, double lmbd, int N_start, int N_step, int num_
 
     vector<long> x, y;
     vector<int> Ns = results[0].first;
+    if (folder != "/")
+        folder = "/" + folder;
     for (int i = 0; i < num_iters; ++i) {
         long minx = INT_MAX, maxx = 0;
         for (auto map_elem: counts[i]) {
@@ -185,15 +187,20 @@ void construct_plot(int N_trials, double lmbd, int N_start, int N_step, int num_
         plt::title("Graphs of size " + std::to_string(Ns[i]));
         plt::xlabel("# of triangles");
         plt::ylabel("# of occurences in experiments");
-        cout << "../plots/size_" + std::to_string(Ns[i]) + "_lambda_" + std::to_string((int)(lmbd * 10)/10) + "_trials_" +
+        cout << "../plots" + folder + "/size_" + std::to_string(Ns[i]) + "_lambda_" + std::to_string((int)(lmbd * 10)/10) + "_trials_" +
                 std::to_string(N_trials) + ".png" << endl;
-        plt::save("../plots/size_" + std::to_string(Ns[i]) + "_lambda_" + std::to_string((int)(lmbd * 10)/10) + "_trials_" +
+        plt::save("../plots" + folder + "/size_" + std::to_string(Ns[i]) + "_lambda_" + std::to_string((int)(lmbd * 10)/10) + "_trials_" +
                   std::to_string(N_trials) + ".png");
         x.clear();
         y.clear();
         plt::clf();
     }
 
+}
+
+
+void construct_plot(int N_trials, double lmbd, int N_start, int N_step, int num_iters) {
+    construct_plot(N_trials, lmbd, N_start, N_step, num_iters, "/");
 }
 
 
@@ -214,6 +221,7 @@ void test2() {
     auto results = generate_for_single_n(100, 1., 0.2, 10);
 
     plt::plot(results.first, results.second);
+    // TODO: make legend function work. plt::legend({"delta as function of lambda"});
     plt::xlabel("lambda");
     plt::ylabel("# of triangles");
     plt::save("plots/1.png");
@@ -226,7 +234,7 @@ int main() {
 
     // test2();
 
-    construct_plot(1000, 6., 600, 100, 2);
+    construct_plot(1000, 6., 1000, 200, 1, "big_graphs");
 
     return 0;
 }
