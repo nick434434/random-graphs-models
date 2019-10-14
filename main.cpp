@@ -1,16 +1,13 @@
-#include<vector>
-#include <map>
-#include <algorithm>
-#include <cmath>
-#include <random>
+#include "erdos_renyi.h"
+#include "grg.h"
 #include "matplotlibcpp.h"
-
+#include "prob_stuff.h"
+#include <iostream>
+#include <map>
 
 namespace plt = matplotlibcpp;
-using std::vector;
-using std::find;
+
 using std::map;
-using std::pair;
 using std::cout;
 using std::endl;
 
@@ -31,116 +28,6 @@ void example() {
 
     plt::plot_surface(x, y, z);
     plt::show();
-}
-
-
-std::random_device generator;
-std::uniform_real_distribution<double> uniform_distribution(0, 1);
-auto edge_decider = [](double prob) {
-    assert(prob > 0 && prob < 1);
-    return uniform_distribution(generator) < prob;
-};
-
-
-void print_graph(vector<vector<int>> G) {
-    int N = G.size();
-    for (int i = 0; i < N; ++i) {
-        for (int j = 0; j < N; ++j)
-            cout << G[i][j] << " ";
-        cout << endl;
-    }
-}
-
-
-vector<vector<int>> generate_ER(int n, double lambd) {
-    vector<vector<int>> graph;
-    double p = lambd / n;
-
-    vector<int> line(n, 0);
-    for (int i = 0; i < n; ++i) {
-        for (int j = i; j < n; ++j)
-            line[j] = (int)edge_decider(p);
-        graph.push_back(line);
-        line.assign(n, 0);
-    }
-
-    return graph;
-}
-
-
-long count_edges(vector<vector<int>> graph) {
-    long total_num = 0;
-    for (int i = 0; i < graph.size(); ++i)
-        for (int j = i; j < graph.size(); ++j)
-            total_num += graph[i][j];
-    return total_num;
-}
-
-
-long count_triangles(vector<vector<int>> graph) {
-    long total_num = 0;
-    int n = graph.size();
-    for (int i = 0; i < n; ++i) {
-        vector<int> g_i = graph[i];
-        for (int j = i + 1; j < n; ++j) {
-            vector<int> g_j = graph[j];
-            int g_i_j = g_i[j];
-            for (int k = j + 1; k < n; ++k) {
-                // cout << "(" << i << ", " << j << ", " << k << "): " << graph[i][j] * graph[j][k] * graph[k][i] << endl;
-                total_num += g_i_j * g_j[k] * graph[i][k];
-            }
-        }
-    }
-    return total_num;
-}
-
-
-pair<vector<double>, vector<long>> generate_for_single_n(int N, double lambda_start, double lambda_step, int num_iters) {
-    vector<long> results(num_iters, 0);
-    vector<double> lambdas(num_iters, 0);
-    double lmbd = lambda_start;
-
-    for (int i = 0; i < num_iters; ++i) {
-        lambdas[i] = lmbd;
-        auto G = generate_ER(N, lmbd);
-        results[i] = count_triangles(G);
-        lmbd += lambda_step;
-    }
-
-    return {lambdas, results};
-}
-
-
-pair<vector<int>, vector<long>> generate_for_single_lambda(double lmbd, int N_start, int N_step, int num_iters) {
-    vector<long> results(num_iters, 0);
-    vector<int> Ns(num_iters, 0);
-    int N = N_start;
-
-    #pragma omp parallel for
-    for (int i = 0; i < num_iters; ++i) {
-        Ns[i] = N;
-        auto G = generate_ER(N, lmbd);
-        results[i] = count_triangles(G);
-        N += N_step;
-    }
-
-    return {Ns, results};
-}
-
-
-vector<double> generate_poisson_function(double lmbd, long start, long end, long scale) {
-    vector<double> res(end - start + 1);
-    double fact = 1;
-    for (long i = 2; i < start; ++i)
-        fact *= i;
-    for (long i = start; i <= end; ++i) {
-        if (i > 0)
-            fact *= i;
-        res[i - start] = scale * std::pow(lmbd, i) / fact * exp(-lmbd);
-        cout << res[i - start] << " ";
-    }
-    cout << endl;
-    return res;
 }
 
 
@@ -228,13 +115,71 @@ void test2() {
 }
 
 
+void plot_pareto(long n) {
+    vector<long> values = pareto_vec(n, std::trunc(sqrt(n)));
+    cout << *std::min_element(values.begin(), values.end()) << endl;
+
+    vector<long> counts(std::trunc(sqrt(n)), 0);
+
+    for (long i = 0; i < n; ++i)
+        try {
+            counts[values[i]]++;
+        } catch(std::out_of_range& e) {
+            cout << e.what();
+        }
+
+    vector<double> x(counts.size()), y(counts.size());
+    for (long i = 0; i < counts.size(); ++i)
+        x[i] = std::log(i), y[i] = std::log(counts[i]);
+    plt::plot(counts);
+    //plt::plot(x, y);
+    plt::show();
+}
+
+
+void plot_pareto_old(long n) {
+    vector<double> values = pareto_vec(n);  // , std::trunc(sqrt(n)));
+    cout << *std::min_element(values.begin(), values.end()) << endl;
+
+    vector<long> counts(1 / 0.01, 0);
+
+    for (long i = 0; i < n; ++i)
+        try {
+            counts[std::trunc(values[i] * 100)]++;
+        } catch(std::out_of_range& e) {
+            cout << e.what();
+        }
+
+    vector<double> x(counts.size()), y(counts.size());
+    for (long i = 0; i < counts.size(); ++i)
+        x[i] = std::log(i), y[i] = std::log(counts[i]);
+    // plt::plot(counts);
+    plt::plot(x, y);
+    plt::show();
+}
+
+
 int main() {
 
     // test1();
 
     // test2();
 
-    construct_plot(1000, 6., 1000, 200, 1, "big_graphs");
+    // Solution for numerical assigment from Problem Set 2, Option 1:
+    // construct_plot(1000, 6., 1000, 200, 1, "big_graphs");
+
+    long n = 100;
+    // auto grg = generate_GRG(n, get_pareto_generator(1, 50));
+
+    /*
+     *  for (long i = 0; i < n; ++i) {
+     *  for (long j = 0; j < n; ++j)
+     *  cout << grg[i][j] << " ";
+     *  cout << endl;
+     *  }
+     */
+
+    plot_pareto_old(90000);
 
     return 0;
 }
