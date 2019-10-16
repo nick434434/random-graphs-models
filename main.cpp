@@ -116,23 +116,27 @@ void test2() {
 
 
 void plot_pareto(long n) {
-    vector<long> values = pareto_vec(n, std::trunc(sqrt(n)));
-    cout << *std::min_element(values.begin(), values.end()) << endl;
+    vector<long> values = pareto_vec(n, 1, (long)std::trunc(sqrt(n)));
+    long min = *std::min_element(values.begin(), values.end());
+    long max = *std::max_element(values.begin(), values.end());
+    cout << min << " " << max << " " << (long)std::trunc(sqrt(n)) << endl;
 
-    vector<long> counts(std::trunc(sqrt(n)), 0);
+    vector<long> counts(max - min + 1, 0);
 
     for (long i = 0; i < n; ++i)
         try {
-            counts[values[i]]++;
+            counts[values[i] - min]++;
         } catch(std::out_of_range& e) {
             cout << e.what();
         }
 
     vector<double> x(counts.size()), y(counts.size());
-    for (long i = 0; i < counts.size(); ++i)
+    for (long i = 0; i < counts.size(); ++i) {
         x[i] = std::log(i), y[i] = std::log(counts[i]);
+        cout << i << (i < 10 ? "  | " : " | ") << counts[i] << endl;
+    }
     plt::plot(counts);
-    //plt::plot(x, y);
+    // plt::plot(x, y);
     plt::show();
 }
 
@@ -179,7 +183,7 @@ int main() {
      *  }
      */
 
-    plot_pareto_old(90000);
+    plot_pareto(2500);
 
     return 0;
 }

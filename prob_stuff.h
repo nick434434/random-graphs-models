@@ -20,7 +20,7 @@ auto edge_decider = [](double prob) {
     return uniform_distribution(generator) < prob;
 };
 
-vector<long> pareto_vec(long n, long max);
+vector<long> pareto_vec(long n, long min, long max);
 
 vector<double> pareto_vec(long n);
 
