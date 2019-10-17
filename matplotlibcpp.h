@@ -1192,9 +1192,17 @@ inline void figure_size(size_t w, size_t h)
     Py_DECREF(res);
 }
 
-inline void legend()
+inline void legend(vector<std::string> names, const std::string& loc = "upper right")
 {
-    PyObject* res = PyObject_CallObject(detail::_interpreter::get().s_python_function_legend, detail::_interpreter::get().s_python_empty_tuple);
+    PyObject* args = PyTuple_New(2);
+    PyList_SetItem(args, 1, PyString_FromString(loc.c_str()));
+
+    PyObject* tup = PyTuple_New(names.size());
+    for (int i = 0; i < names.size(); ++i)
+        PyTuple_SetItem(tup, i, PyString_FromString(names[i].c_str()));
+    PyList_SetItem(args, 0, tup);
+
+    PyObject* res = PyObject_CallObject(detail::_interpreter::get().s_python_function_legend, args);
     if(!res) throw std::runtime_error("Call to legend() failed.");
 
     Py_DECREF(res);

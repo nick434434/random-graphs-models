@@ -4,6 +4,10 @@
 #include "prob_stuff.h"
 #include <iostream>
 #include <map>
+#include <algorithm>
+
+// Use this for saving .dot Graphviz representation
+// #define VISUALIZE_GRAPH
 
 namespace plt = matplotlibcpp;
 
@@ -133,7 +137,7 @@ void plot_pareto(long n) {
     vector<double> x(counts.size()), y(counts.size());
     for (long i = 0; i < counts.size(); ++i) {
         x[i] = std::log(i), y[i] = std::log(counts[i]);
-        cout << i << (i < 10 ? "  | " : " | ") << counts[i] << endl;
+        // cout << i << (i < 10 ? "  | " : " | ") << counts[i] << endl;
     }
     plt::plot(counts);
     // plt::plot(x, y);
@@ -163,15 +167,79 @@ void plot_pareto_old(long n) {
 }
 
 
+void generate_GRG_degrees_plot(long n, long m, bool plot_degrees = true) {
+    vector<long> w;
+    vector<vector<pair<long, long>>> graphs = generate_m_GRG_edge_pairs_same_weights(n, m, n/2, w);
+
+    long w_max = *std::max_element(w.begin(), w.end());
+    int n_vertices = 10;
+    vector<long> v(n_vertices);
+    v[0] = std::trunc(uniform_distribution(generator) * w.size());
+    for (int i = 1; i < n_vertices; ++i)
+        while ((v[i] = std::trunc(uniform_distribution(generator) * w.size())) == v[i - 1]);
+    
+    vector<vector<double>> poisson(n_vertices);
+    for (int i = 0; i < n_vertices; ++i)
+        poisson[i] = generate_poisson_function(w[v[i]], 1, 2000, 1);
+
+    plt::clf();
+    std::sort(w.begin(), w.end());
+    plt::plot(w);
+
+    vector<vector<long>> degrees(m);
+    vector<vector<long>> v_distribution(n_vertices);
+    long i = 0;
+    for (const auto& g: graphs) {
+        degrees[i] = count_degrees(g);
+        for (int j = 0; j < n_vertices; ++j)
+            v_distribution[j].push_back(degrees[i][v[j]]);
+        if (i < 3) {
+            std::sort(degrees[i].begin(), degrees[i].end());
+            plt::plot(degrees[i]);
+            i++;
+        }
+    }
+
+    // This is a plot of similarity of ALL degrees with weights
+    // plt::legend({"Initial weights", "1st graph's degrees", "2nd graph's degrees", "3rd graph's degrees"}, "upper left");
+    plt::save(std::string("../plots/PS3/PS3_4_size_") + std::to_string(n) + std::string(".png"));
+
+    if (plot_degrees) {
+        for (i = 0; i < n_vertices; ++i) {
+            long max_d = *std::max_element(v_distribution[i].begin(), v_distribution[i].end());
+            vector<double> counts(max_d + 1, 0);
+            double sum = 0;
+
+            for (auto d: v_distribution[i])
+                counts[d]++;
+            for (long j = 0; j < max_d + 1; ++j)
+                counts[j] /= v_distribution[i].size();
+
+            plt::clf();
+            plt::plot(counts);
+            plt::plot(poisson[i]);
+            plt::xlim((long)1, max_d + 1);
+            // plt::legend({"Vertex degree distribution", "Corresponding Poisson(w)"});
+            plt::save(std::string("../plots/PS3/PS3_3_size_") + std::to_string(n) + std::string("_") + std::to_string(i+1) + std::string("_vertex.png"));
+        }
+    }
+
+}
+
+
 int main() {
 
     // test1();
 
     // test2();
 
+    // ==========================
     // Solution for numerical assigment from Problem Set 2, Option 1:
     // construct_plot(1000, 6., 1000, 200, 1, "big_graphs");
+    // ==========================
 
+    // ==========================
+    // Solution for numerical assigment from Problem Set 3:
     long n = 100;
     // auto grg = generate_GRG(n, get_pareto_generator(1, 50));
 
@@ -183,7 +251,17 @@ int main() {
      *  }
      */
 
-    plot_pareto(2500);
+    // plot_pareto(40000);
+    generate_GRG_degrees_plot(500, 500);
+    generate_GRG_degrees_plot(1000, 500);
+    generate_GRG_degrees_plot(1500, 500);
+    generate_GRG_degrees_plot(2000, 500);
+
+//    generate_GRG_degrees_plot(5000, 5, false);
+//    generate_GRG_degrees_plot(7500, 5, false);
+//    generate_GRG_degrees_plot(10000, 5, false);
+//    generate_GRG_degrees_plot(15000, 5, false);
+    // ==========================
 
     return 0;
 }
