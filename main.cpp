@@ -1,10 +1,11 @@
 #include "erdos_renyi.h"
 #include "grg.h"
 #include "matplotlibcpp.h"
-#include "prob_stuff.h"
+#include "conf_model.h"
 #include <iostream>
 #include <map>
 #include <algorithm>
+#include <string>
 
 // Use this for saving .dot Graphviz representation
 // #define VISUALIZE_GRAPH
@@ -14,6 +15,7 @@ namespace plt = matplotlibcpp;
 using std::map;
 using std::cout;
 using std::endl;
+using std::string;
 
 
 void example() {
@@ -227,41 +229,23 @@ void generate_GRG_degrees_plot(long n, long m, bool plot_degrees = true) {
 }
 
 
+void test_creation_CM(long n) {
+    vector<long> degrees = generate_n_pareto(1, (long)std::trunc(sqrt(n)), n);
+    ConfigurationModel cm = ConfigurationModel(degrees);
+
+    for (int i = 0; i < 3; ++i) {
+        cm.make_half_edges();
+        cm.connect_half_edges();
+        cm.get_graphviz(string("CM_") + std::to_string(n) + string("_") + std::to_string(i + 1) + string(".dot"));
+        cm.clear_realization();
+    }
+
+}
+
+
 int main() {
 
-    // test1();
-
-    // test2();
-
-    // ==========================
-    // Solution for numerical assigment from Problem Set 2, Option 1:
-    // construct_plot(1000, 6., 1000, 200, 1, "big_graphs");
-    // ==========================
-
-    // ==========================
-    // Solution for numerical assigment from Problem Set 3:
-    long n = 100;
-    // auto grg = generate_GRG(n, get_pareto_generator(1, 50));
-
-    /*
-     *  for (long i = 0; i < n; ++i) {
-     *  for (long j = 0; j < n; ++j)
-     *  cout << grg[i][j] << " ";
-     *  cout << endl;
-     *  }
-     */
-
-    // plot_pareto(40000);
-    generate_GRG_degrees_plot(500, 500);
-    generate_GRG_degrees_plot(1000, 500);
-    generate_GRG_degrees_plot(1500, 500);
-    generate_GRG_degrees_plot(2000, 500);
-
-//    generate_GRG_degrees_plot(5000, 5, false);
-//    generate_GRG_degrees_plot(7500, 5, false);
-//    generate_GRG_degrees_plot(10000, 5, false);
-//    generate_GRG_degrees_plot(15000, 5, false);
-    // ==========================
+    test_creation_CM(10);
 
     return 0;
 }
