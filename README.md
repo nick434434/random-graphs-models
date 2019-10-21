@@ -1,4 +1,4 @@
 # erdos-renyi-num-of-triangles
-Program for constructuing Erdos-Renyi graph with parameters (n, lambda/n), counting number of triangles/edges in it and proving empirically that # of triangles converges to Poisson distribution.
+Started as a numerical task to prove convergence of number of triangles in ER graph, this project grown to consist of various random graph models' implementations, such as *Erdos-Renyi random graph, Generalized random graph, Configuration Model*.
 
 Huge credit to the person who created the port of matplotlib to C++: https://github.com/lava/matplotlib-cpp. matplotlibcpp.h is taken from this repository.
