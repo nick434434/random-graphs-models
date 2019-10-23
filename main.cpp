@@ -3,10 +3,10 @@
 #include "grg.h"
 #include "matplotlibcpp.h"
 #include "conf_model.h"
-#include <iostream>
 #include <map>
 #include <algorithm>
 #include <string>
+#include <fstream>
 
 // Use this for saving .dot Graphviz representation
 // #define VISUALIZE_GRAPH
@@ -238,17 +238,32 @@ void generate_GRG_degrees_plot(long n, long m, bool plot_degrees = true) {
 }
 
 
-void test_creation_CM(long n, long m = 3, bool graphviz = false) {
-    vector<long> degrees = generate_n_pareto(1, (long)std::trunc(sqrt(n)), n);
+void test_creation_CM(std::ostream& out, long n, double gamma, long m = 3, bool graphviz = false) {
+    double beta = 1. / std::pow(log(n), gamma);
+    vector<long> degrees = generate_n_pareto(1, n/2, n); //(long)std::trunc(sqrt(n))
+
+    // Ensuring that sum of degrees is even
+    long sum = 0;
+    sum = std::accumulate(degrees.begin(), degrees.end(), sum);
+    if (sum % 2)
+        degrees[(long)std::trunc(uniform_distribution(randGen) * (n - 1))]++;
+
     ConfigurationModel cm = ConfigurationModel(degrees);
+    std::string message("Half edges made");
 
     for (long i = 0; i < m; ++i) {
+        timing::start_local_clock();
         cm.make_half_edges();
+        timing::reset_local_clock(message, out);
+        message = "Half edges connected";
         cm.connect_half_edges();
+        timing::reset_local_clock(message, out);
         if (graphviz)
             cm.get_graphviz(string("CM_") + std::to_string(n) + string("_") + std::to_string(i + 1) + string(".dot"));
-        cm.compute_distance();
-        cout << "Distance " << i + 1 << ": " << cm.distance << endl;
+        message = "Avg (expected) distance computed";
+        cm.compute_distance(true);
+        timing::reset_local_clock(message, out);
+        out << "Distance " << i + 1 << ": " << cm.distance << endl;
         cm.clear_realization();
     }
 
@@ -257,17 +272,18 @@ void test_creation_CM(long n, long m = 3, bool graphviz = false) {
 
 int main() {
 
-    start_clock();
-    cout << check_clock() << endl;
-    sleep(2);
-    cout << reset_clock() << endl;
+    timing::start_clock();
+    std::ofstream fout("log.txt");
+    double gamma = 0.2;
 
-    /*
     for (int i = 0; i < 10; ++i) {
-        cout << i + 1 << " iteration!" << endl;
-        test_creation_CM(100 + 200*i, 3);
-        cout << "===============================" << endl;
-    }*/
+        fout << i + 1 << " iteration! Size of graph is " << 100 + 200 * i << endl;
+        test_creation_CM(fout, 100 + 200 * i, gamma, 1, true);
+        fout << timing::check_clock() << endl;
+        fout << "===============================" << endl;
+    }
+
+    fout.close();
 
     // cout << "Tau = " << tau << endl;
     // auto v1 = generate_n_pareto(1, 100, 1000);

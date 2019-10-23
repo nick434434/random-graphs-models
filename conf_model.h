@@ -7,13 +7,16 @@
 #define NUMERICALASSIGNMENTPS2_CONF_MODEL_H
 
 #include "prob_stuff.h"
+#include <boost/graph/undirected_graph.hpp>
 #include <boost/graph/adjacency_list.hpp>
 #include <boost/graph/graph_traits.hpp>
 
 using std::pair;
 
 // multisetS for OutEdgeList is used to ensure multiple edges are possible
-typedef boost::adjacency_list<boost::multisetS, boost::vecS, boost::directedS> Graph;
+typedef boost::undirected_graph<> UGraph;
+typedef boost::property<boost::edge_weight_t, double> EdgeWeightProperty;
+typedef boost::adjacency_list<boost::multisetS, boost::vecS, boost::undirectedS, boost::no_property, EdgeWeightProperty> Graph;
 // typedef boost:: Matrix;
 
 class ConfigurationModel {
@@ -29,7 +32,7 @@ private:
 
 public:
     // Graph distance
-    long distance = 0;
+    double distance = 0;
 
     ConfigurationModel() = default;
 
@@ -52,7 +55,7 @@ public:
 
     void clear_realization();
 
-    void compute_distance();
+    void compute_distance(bool use_johnson = false);
 
     void get_graphviz(const std::string& dot_fname);
 

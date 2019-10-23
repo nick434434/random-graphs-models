@@ -4,33 +4,25 @@
 
 
 #include "conf_model.h"
-#include <iostream>
+#include "timing.h"
 #include <vector>
 #include <unordered_set>
 #include <algorithm>
 #include <boost/graph/exterior_property.hpp>
 #include <boost/graph/graphviz.hpp>
 #include <boost/graph/floyd_warshall_shortest.hpp>
+#include <boost/graph/johnson_all_pairs_shortest.hpp>
+#include <limits>
 
-typedef boost::exterior_vertex_property<Graph, float> DistanceProperty;
+typedef boost::exterior_vertex_property<Graph, double> DistanceProperty;
 typedef DistanceProperty::matrix_type DistanceMatrix;
 typedef DistanceProperty::matrix_map_type DistanceMatrixMap;
+
+typedef boost::property_map<Graph, boost::edge_weight_t>::type WeightMap;
 
 using std::unordered_set;
 using std::vector;
 using std::pair;
-
-
-// Helper to determine whether there's a const_iterator for T.
-template<typename T>
-struct has_const_iterator
-{
-private:
-    template<typename C> static char test(typename C::const_iterator*);
-    template<typename C> static int test(...);
-public:
-    enum { value = sizeof(test<T>(0)) == sizeof(char) };
-};
 
 
 // template<class Container>
@@ -89,7 +81,7 @@ void ConfigurationModel::connect_half_edges() {
         available.erase(available.find(connection));
 
         // Creating an edge in realization
-        boost::add_edge(he[i].second, he[connection].second, g);
+        boost::add_edge(he[i].second, he[connection].second, 1,g);
 
         // Remembering which half-edges are paired in case we need this info
         he[connection].first = i;
@@ -111,20 +103,33 @@ void ConfigurationModel::clear_realization() {
 }
 
 
-void ConfigurationModel::compute_distance() {
+void ConfigurationModel::compute_distance(bool use_johnson) {
     DistanceMatrix distances(n);
     DistanceMatrixMap dm(distances, g);
 
-    boost::floyd_warshall_all_pairs_shortest_paths(g, dm);
+    WeightMap wm = boost::get(boost::edge_weight, g);
 
+    // std::string message = "Distances computed";
+    // timing::start_local_clock();
+    if (use_johnson)
+        boost::johnson_all_pairs_shortest_paths(g, dm, boost::weight_map(wm));
+    else
+        boost::floyd_warshall_all_pairs_shortest_paths(g, dm, boost::weight_map(wm));
+    // timing::reset_local_clock(message);
+
+    // message = "Maximum distance found";
+    distance = 0;
+    bool f;
+    long count = 0;
     for (long i = 0; i < n; ++i)
-        std::cout << dm[i] << std::endl;
-    /*
-    vector<long> d_max;
-    std::transform(d.begin(), d.end(), std::back_inserter(d_max),
-            [](vector<long> dist) { return *std::max_element(dist.begin(), dist.end()); });
-    */
-
+        for (long j = 0; j < n; ++j) {
+            f = std::abs(distances[i][j] - std::numeric_limits<typeof(distance)>::max()) < 1e-5;
+            distance += f ? 0 : distances[i][j];
+            count += 1 - (int)f;
+        }
+            // distance = std::max(distance, std::abs(distances[i][j] - std::numeric_limits<typeof(distance)>::max()) < 1e-5 ? 0 : distances[i][j]);
+    distance /= count;
+    // timing::reset_local_clock(message);
     // distance = *std::max_element(d_max.begin(), d_max.end());
     // for (long i = 0; i < n; ++i)
     //     max_d = std::max(*std::max_element(d[i].begin(), d[i].end()), max_d);
