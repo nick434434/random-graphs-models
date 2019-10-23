@@ -1,12 +1,20 @@
 //
-// Created by sv2019 on 19-10-19.
+// Created by nick434434 on 19-10-19.
 //
 
 
 #include "conf_model.h"
+#include <iostream>
 #include <vector>
 #include <unordered_set>
 #include <algorithm>
+#include <boost/graph/exterior_property.hpp>
+#include <boost/graph/graphviz.hpp>
+#include <boost/graph/floyd_warshall_shortest.hpp>
+
+typedef boost::exterior_vertex_property<Graph, float> DistanceProperty;
+typedef DistanceProperty::matrix_type DistanceMatrix;
+typedef DistanceProperty::matrix_map_type DistanceMatrixMap;
 
 using std::unordered_set;
 using std::vector;
@@ -100,6 +108,26 @@ void ConfigurationModel::clear_realization() {
     }
 
     he.erase(he.begin(), he.end());
+}
+
+
+void ConfigurationModel::compute_distance() {
+    DistanceMatrix distances(n);
+    DistanceMatrixMap dm(distances, g);
+
+    boost::floyd_warshall_all_pairs_shortest_paths(g, dm);
+
+    for (long i = 0; i < n; ++i)
+        std::cout << dm[i] << std::endl;
+    /*
+    vector<long> d_max;
+    std::transform(d.begin(), d.end(), std::back_inserter(d_max),
+            [](vector<long> dist) { return *std::max_element(dist.begin(), dist.end()); });
+    */
+
+    // distance = *std::max_element(d_max.begin(), d_max.end());
+    // for (long i = 0; i < n; ++i)
+    //     max_d = std::max(*std::max_element(d[i].begin(), d[i].end()), max_d);
 }
 
 

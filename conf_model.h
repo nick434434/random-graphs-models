@@ -1,5 +1,5 @@
 //
-// Created by sv2019 on 19-10-19.
+// Created by nick434434 on 19-10-19.
 //
 #pragma once
 
@@ -7,7 +7,6 @@
 #define NUMERICALASSIGNMENTPS2_CONF_MODEL_H
 
 #include "prob_stuff.h"
-#include <boost/graph/graphviz.hpp>
 #include <boost/graph/adjacency_list.hpp>
 #include <boost/graph/graph_traits.hpp>
 
@@ -15,6 +14,7 @@ using std::pair;
 
 // multisetS for OutEdgeList is used to ensure multiple edges are possible
 typedef boost::adjacency_list<boost::multisetS, boost::vecS, boost::directedS> Graph;
+// typedef boost:: Matrix;
 
 class ConfigurationModel {
 private:
@@ -26,8 +26,11 @@ private:
     long n = 0;
     // Temporary variable for constructing realization
     vector<pair<long, long>> he = vector<pair<long, long>>();
-    
+
 public:
+    // Graph distance
+    long distance = 0;
+
     ConfigurationModel() = default;
 
     explicit ConfigurationModel(long n): n(n), degrees(vector<long>(n, 0)) {}
@@ -48,6 +51,8 @@ public:
     void connect_half_edges();
 
     void clear_realization();
+
+    void compute_distance();
 
     void get_graphviz(const std::string& dot_fname);
 

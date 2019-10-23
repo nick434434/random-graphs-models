@@ -73,3 +73,13 @@ vector<long> generate_n_pareto(long min, long max, long n) {
     return res;
 }
 
+
+vector<long> alternative_n_pareto(long min, long max, long n) {
+    vector<long> res(n);
+
+    for (long i = 0; i < n; ++i)
+        res[i] = min + std::trunc( std::pow(1. / uniform_distribution(generator), 1. / (tau - 1)) + 1 );
+
+    return res;
+}
+

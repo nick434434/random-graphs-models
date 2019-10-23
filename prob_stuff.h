@@ -41,4 +41,6 @@ std::function<long()> get_pareto_generator(long min, long max);
 
 vector<long> generate_n_pareto(long min, long max, long n);
 
+vector<long> alternative_n_pareto(long min, long max, long n);
+
 #endif //NUMERICALASSIGNMENTPS2_PROB_STUFF_H

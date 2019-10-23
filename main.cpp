@@ -1,3 +1,4 @@
+#include "timing.h"
 #include "erdos_renyi.h"
 #include "grg.h"
 #include "matplotlibcpp.h"
@@ -121,8 +122,7 @@ void test2() {
 }
 
 
-void plot_pareto(long n) {
-    vector<long> values = pareto_vec(n, 1, (long)std::trunc(sqrt(n)));
+void plot_counts(long n, vector<long> values, bool loglog = false) {
     long min = *std::min_element(values.begin(), values.end());
     long max = *std::max_element(values.begin(), values.end());
     cout << min << " " << max << " " << (long)std::trunc(sqrt(n)) << endl;
@@ -141,9 +141,18 @@ void plot_pareto(long n) {
         x[i] = std::log(i), y[i] = std::log(counts[i]);
         // cout << i << (i < 10 ? "  | " : " | ") << counts[i] << endl;
     }
-    plt::plot(counts);
-    // plt::plot(x, y);
+    if (!loglog)
+        plt::plot(counts);
+    else
+        plt::plot(x, y);
     plt::show();
+}
+
+
+void plot_pareto(long n) {
+    vector<long> values = pareto_vec(n, 1, (long)std::trunc(sqrt(n)));
+
+    plot_counts(n, values);
 }
 
 
@@ -229,14 +238,17 @@ void generate_GRG_degrees_plot(long n, long m, bool plot_degrees = true) {
 }
 
 
-void test_creation_CM(long n) {
+void test_creation_CM(long n, long m = 3, bool graphviz = false) {
     vector<long> degrees = generate_n_pareto(1, (long)std::trunc(sqrt(n)), n);
     ConfigurationModel cm = ConfigurationModel(degrees);
 
-    for (int i = 0; i < 3; ++i) {
+    for (long i = 0; i < m; ++i) {
         cm.make_half_edges();
         cm.connect_half_edges();
-        cm.get_graphviz(string("CM_") + std::to_string(n) + string("_") + std::to_string(i + 1) + string(".dot"));
+        if (graphviz)
+            cm.get_graphviz(string("CM_") + std::to_string(n) + string("_") + std::to_string(i + 1) + string(".dot"));
+        cm.compute_distance();
+        cout << "Distance " << i + 1 << ": " << cm.distance << endl;
         cm.clear_realization();
     }
 
@@ -245,7 +257,24 @@ void test_creation_CM(long n) {
 
 int main() {
 
-    test_creation_CM(10);
+    start_clock();
+    cout << check_clock() << endl;
+    sleep(2);
+    cout << reset_clock() << endl;
+
+    /*
+    for (int i = 0; i < 10; ++i) {
+        cout << i + 1 << " iteration!" << endl;
+        test_creation_CM(100 + 200*i, 3);
+        cout << "===============================" << endl;
+    }*/
+
+    // cout << "Tau = " << tau << endl;
+    // auto v1 = generate_n_pareto(1, 100, 1000);
+    // auto v2 = alternative_n_pareto(1, 100, 1000);
+
+    // plot_counts(1000, v2);
+    // plot_counts(1000, v2, true);
 
     return 0;
 }
