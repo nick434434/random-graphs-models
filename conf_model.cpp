@@ -103,7 +103,7 @@ void ConfigurationModel::clear_realization() {
 }
 
 
-void ConfigurationModel::compute_distance(bool use_johnson) {
+void ConfigurationModel::compute_distance(bool average, bool use_johnson) {
     DistanceMatrix distances(n);
     DistanceMatrixMap dm(distances, g);
 
@@ -123,12 +123,16 @@ void ConfigurationModel::compute_distance(bool use_johnson) {
     long count = 0;
     for (long i = 0; i < n; ++i)
         for (long j = 0; j < n; ++j) {
-            f = std::abs(distances[i][j] - std::numeric_limits<typeof(distance)>::max()) < 1e-5;
-            distance += f ? 0 : distances[i][j];
-            count += 1 - (int)f;
+            if (average) {
+                f = std::abs(distances[i][j] - std::numeric_limits<typeof(distance)>::max()) < 1e-5;
+                distance += f ? 0 : distances[i][j];
+                count += 1 - (int) f;
+            } else
+                distance = std::max(distance, std::abs(distances[i][j] - std::numeric_limits<typeof(distance)>::max()) < 1e-5 ? 0 : distances[i][j]);
         }
-            // distance = std::max(distance, std::abs(distances[i][j] - std::numeric_limits<typeof(distance)>::max()) < 1e-5 ? 0 : distances[i][j]);
-    distance /= count;
+
+    if (average)
+        distance /= count;
     // timing::reset_local_clock(message);
     // distance = *std::max_element(d_max.begin(), d_max.end());
     // for (long i = 0; i < n; ++i)

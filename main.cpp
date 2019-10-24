@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <string>
 #include <fstream>
+#include <omp.h>
 
 // Use this for saving .dot Graphviz representation
 // #define VISUALIZE_GRAPH
@@ -132,7 +133,7 @@ void plot_counts(long n, vector<long> values, bool loglog = false) {
     for (long i = 0; i < n; ++i)
         try {
             counts[values[i] - min]++;
-        } catch(std::out_of_range& e) {
+        } catch(std::exception& e) {
             cout << e.what();
         }
 
@@ -238,9 +239,10 @@ void generate_GRG_degrees_plot(long n, long m, bool plot_degrees = true) {
 }
 
 
-void test_creation_CM(std::ostream& out, long n, double gamma, long m = 3, bool graphviz = false) {
+double get_CM_distance(std::ostream& out, long n, double gamma, long m = 3, bool graphviz = false) {
     double beta = 1. / std::pow(log(n), gamma);
-    vector<long> degrees = generate_n_pareto(1, n/2, n); //(long)std::trunc(sqrt(n))
+    vector<long> degrees = alternative_n_pareto_truncated(n, gamma);  // generate_n_pareto(1, (long)std::pow(n, beta), n);
+    // out << "Bound for degrees: " << (long)std::pow(n, beta) << endl;
 
     // Ensuring that sum of degrees is even
     long sum = 0;
@@ -251,45 +253,79 @@ void test_creation_CM(std::ostream& out, long n, double gamma, long m = 3, bool 
     ConfigurationModel cm = ConfigurationModel(degrees);
     std::string message("Half edges made");
 
+    double dist_avg = 0;
     for (long i = 0; i < m; ++i) {
-        timing::start_local_clock();
+        // timing::start_local_clock();
         cm.make_half_edges();
-        timing::reset_local_clock(message, out);
-        message = "Half edges connected";
+        // timing::reset_local_clock(message, out);
+        // message = "Half edges connected";
         cm.connect_half_edges();
-        timing::reset_local_clock(message, out);
+        // timing::reset_local_clock(message, out);
         if (graphviz)
-            cm.get_graphviz(string("CM_") + std::to_string(n) + string("_") + std::to_string(i + 1) + string(".dot"));
-        message = "Avg (expected) distance computed";
-        cm.compute_distance(true);
-        timing::reset_local_clock(message, out);
-        out << "Distance " << i + 1 << ": " << cm.distance << endl;
+            cm.get_graphviz(
+                    string("CM_") + std::to_string(n) + string(".dot"));  // string("_") + std::to_string(i + 1) +
+        // message = "Avg (expected) distance computed";
+        cm.compute_distance(true, true);
+        // timing::reset_local_clock(message, out);
+        // out << "Distance: " << cm.distance << endl;
         cm.clear_realization();
+        dist_avg += cm.distance;
     }
 
+    return dist_avg / m;
 }
 
 
 int main() {
 
-    timing::start_clock();
-    std::ofstream fout("log.txt");
-    double gamma = 0.2;
 
-    for (int i = 0; i < 10; ++i) {
-        fout << i + 1 << " iteration! Size of graph is " << 100 + 200 * i << endl;
-        test_creation_CM(fout, 100 + 200 * i, gamma, 1, true);
-        fout << timing::check_clock() << endl;
-        fout << "===============================" << endl;
+    for (int k = 8; k >= 0; --k) {
+        timing::start_clock();
+        // std::ofstream fout(std::string("log_gamma_") + std::to_string(k + 1) + std::string(".txt"));
+        double gamma = 0.1 + 0.1*k;
+        long n = 30;
+        vector<double> distances(n), sizes(n);
+        #pragma omp parallel
+        {
+            #pragma omp for
+            for (long i = 0; i < n; ++i) {
+                sizes[i] = 20 + i;
+                // cout << i + 1 << " iteration! Size of graph is " << sizes[i] << endl;
+                distances[i] = get_CM_distance(cout, sizes[i], gamma, 50, false);
+                // cout << timing::check_clock() << endl;
+                // cout << "===============================" << endl;
+                if (i > 0 && i % 10 == 0)
+                    cout << "Iteration " << i + 1 << " done!" << endl;
+            }
+        };
+
+
+        // fout.close();
+
+
+        plt::plot(sizes, distances);
+        // plt::save(std::string("plots/Project/new_pareto/dist_0.") + std::to_string(k + 1) + std::string(".png"));
+        // plt::clf();
+        vector<double> dst_log;
+        double deg = std::log((3 - tau) * distances[n/2]) / std::log(std::log(sizes[n/2]));
+        double multipl = 0;
+        for (long jj = 0; jj < n; ++jj)
+            multipl += 1. * distances[jj] / std::pow(std::log(sizes[jj]), gamma);
+        multipl /= n;
+        std::transform(sizes.begin(), sizes.end(), std::back_inserter(dst_log),
+            [gamma, multipl](long val) { return std::pow(std::log(val), gamma) * multipl; });  //  / (3 - tau)
+        plt::plot(sizes, dst_log);
+        plt::save(std::string("plots/Project/new_pareto_accurate2/dist_0.") + std::to_string(k + 1) + std::string("_log_fixed.png"));
+        plt::clf();
+        cout << "0." << k + 1 << " is done! Multiplier was " << multipl << ", while actual 1/(3-t) = " << 1. / (3 - tau) << endl;
     }
-
-    fout.close();
 
     // cout << "Tau = " << tau << endl;
     // auto v1 = generate_n_pareto(1, 100, 1000);
-    // auto v2 = alternative_n_pareto(1, 100, 1000);
+    // long n = 100000;
+    // auto v2 = alternative_n_pareto(n);
 
-    // plot_counts(1000, v2);
+    // plot_counts(n, v2, true);
     // plot_counts(1000, v2, true);
 
     return 0;

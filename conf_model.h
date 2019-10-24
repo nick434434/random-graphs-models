@@ -55,7 +55,7 @@ public:
 
     void clear_realization();
 
-    void compute_distance(bool use_johnson = false);
+    void compute_distance(bool average = false, bool use_johnson = false);
 
     void get_graphviz(const std::string& dot_fname);
 

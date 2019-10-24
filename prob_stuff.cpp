@@ -74,11 +74,23 @@ vector<long> generate_n_pareto(long min, long max, long n) {
 }
 
 
-vector<long> alternative_n_pareto(long min, long max, long n) {
+vector<long> alternative_n_pareto(long n) {
     vector<long> res(n);
 
     for (long i = 0; i < n; ++i)
-        res[i] = min + std::trunc( std::pow(1. / uniform_distribution(generator), 1. / (tau - 1)) + 1 );
+        res[i] = std::trunc( std::pow(1. / uniform_distribution(generator), 1. / (tau - 1)) + 1 );
+
+    return res;
+}
+
+
+vector<long> alternative_n_pareto_truncated(long n, double gamma) {
+    vector<long> res(n);
+    double beta = 1. / std::pow(log(n), gamma);
+    double n_beta = std::pow(n, beta);
+
+    for (long i = 0; i < n; ++i)
+        while ((res[i] = std::trunc( std::pow(1. / uniform_distribution(generator), 1. / (tau - 1)) + 1 )) >= n_beta);
 
     return res;
 }
