@@ -9,6 +9,8 @@
 #include <fstream>
 #include <omp.h>
 
+#include <boost/filesystem.hpp>
+
 // Use this for saving .dot Graphviz representation
 // #define VISUALIZE_GRAPH
 
@@ -239,9 +241,12 @@ void generate_GRG_degrees_plot(long n, long m, bool plot_degrees = true) {
 }
 
 
-double get_CM_distance(std::ostream& out, long n, double gamma, long m = 3, bool graphviz = false) {
-    double beta = 1. / std::pow(log(n), gamma);
-    vector<long> degrees = alternative_n_pareto_truncated(n, gamma);  // generate_n_pareto(1, (long)std::pow(n, beta), n);
+double get_CM_distance(std::ostream& out, long n, double gamma, long m = 3, bool truncate = true, bool beta_loglog = false, bool graphviz = false) {
+    vector<long> degrees;
+    if (truncate)
+        degrees = alternative_n_pareto_truncated(n, gamma, beta_loglog);  // generate_n_pareto(1, (long)std::pow(n, beta), n);
+    else
+        degrees = alternative_n_pareto(n);
     // out << "Bound for degrees: " << (long)std::pow(n, beta) << endl;
 
     // Ensuring that sum of degrees is even
@@ -251,7 +256,7 @@ double get_CM_distance(std::ostream& out, long n, double gamma, long m = 3, bool
         degrees[(long)std::trunc(uniform_distribution(randGen) * (n - 1))]++;
 
     ConfigurationModel cm = ConfigurationModel(degrees);
-    std::string message("Half edges made");
+    // std::string message("Half edges made");
 
     double dist_avg = 0;
     for (long i = 0; i < m; ++i) {
@@ -276,49 +281,164 @@ double get_CM_distance(std::ostream& out, long n, double gamma, long m = 3, bool
 }
 
 
-int main() {
+void test_truncation() {
+    long n = 100000;
+    auto values = alternative_n_pareto_truncated(n, 0.3);
+    plot_counts(n, values, true);
+    values = alternative_n_pareto_truncated(n, 0.3, true);
+    plot_counts(n, values, true);
+}
 
+
+void test_truncation_2() {
+    long n = 100000;
+    vector<double> unif(n);
+    for (auto& u: unif)
+        u = uniform_distribution(generator);
+    double min = *std::min_element(unif.begin(), unif.end());
+    cout << min << " " << std::pow(1 / min, 1 / (tau - 1)) << endl;
+
+    vector<long> res;
+    std::transform(unif.begin(), unif.end(), std::back_inserter(res), [](double a) { return (long)std::pow(1 / a, 1 / (tau - 1)); });
+
+    plot_counts(n, res, true);
+}
+
+
+void plot_truncated(const std::string& folder, int n_trials, int n_sizes, int init_size, int step, bool beta_loglog) {
+
+    boost::filesystem::path dir(std::string("plots/Project/") + folder);
+    if (!(boost::filesystem::exists(dir) && boost::filesystem::is_directory(dir)) || !boost::filesystem::exists(boost::filesystem::path(std::string("plots/Project/") + folder + std::string("/data"))))
+        boost::filesystem::create_directories(boost::filesystem::path(std::string("plots/Project/") + folder + std::string("/data")));
 
     for (int k = 8; k >= 0; --k) {
         timing::start_clock();
         // std::ofstream fout(std::string("log_gamma_") + std::to_string(k + 1) + std::string(".txt"));
         double gamma = 0.1 + 0.1*k;
-        long n = 30;
+        long n = n_sizes;
         vector<double> distances(n), sizes(n);
         #pragma omp parallel
         {
             #pragma omp for
             for (long i = 0; i < n; ++i) {
-                sizes[i] = 20 + i;
-                // cout << i + 1 << " iteration! Size of graph is " << sizes[i] << endl;
-                distances[i] = get_CM_distance(cout, sizes[i], gamma, 50, false);
-                // cout << timing::check_clock() << endl;
-                // cout << "===============================" << endl;
+                sizes[i] = init_size + step * i;
+                cout << i + 1 << " iteration! Size of graph is " << sizes[i] << endl;
+                distances[i] = get_CM_distance(cout, sizes[i], gamma, n_trials, true, beta_loglog, false);
+                cout << timing::check_clock() << endl;
+                cout << "===============================" << endl;
                 if (i > 0 && i % 10 == 0)
                     cout << "Iteration " << i + 1 << " done!" << endl;
             }
-        };
+        }
 
 
         // fout.close();
 
 
         plt::plot(sizes, distances);
+        std::ofstream os(std::string("plots/Project/") + folder + std::string("/data/dist_0.") + std::to_string(k + 1) + std::string(".dat"), std::ios::binary);
+        os.write((const char*)&n, sizeof(n));
+        os.write((const char*)&sizes[0], n * sizeof(sizes[0]));
+        os.write((const char*)&distances[0], n * sizeof(distances[0]));
+        os.close();
         // plt::save(std::string("plots/Project/new_pareto/dist_0.") + std::to_string(k + 1) + std::string(".png"));
         // plt::clf();
         vector<double> dst_log;
         double deg = std::log((3 - tau) * distances[n/2]) / std::log(std::log(sizes[n/2]));
-        double multipl = 0;
-        for (long jj = 0; jj < n; ++jj)
-            multipl += 1. * distances[jj] / std::pow(std::log(sizes[jj]), gamma);
-        multipl /= n;
-        std::transform(sizes.begin(), sizes.end(), std::back_inserter(dst_log),
-            [gamma, multipl](long val) { return std::pow(std::log(val), gamma) * multipl; });  //  / (3 - tau)
-        plt::plot(sizes, dst_log);
-        plt::save(std::string("plots/Project/new_pareto_accurate2/dist_0.") + std::to_string(k + 1) + std::string("_log_fixed.png"));
-        plt::clf();
-        cout << "0." << k + 1 << " is done! Multiplier was " << multipl << ", while actual 1/(3-t) = " << 1. / (3 - tau) << endl;
+        double multipl = -1;
+        /*
+        if (!beta_loglog) {
+            multipl = 0;
+            for (long jj = 0; jj < n; ++jj)
+                multipl += 1. * distances[jj] / std::pow(std::log(sizes[jj]), gamma);
+            multipl /= n;
+            std::transform(sizes.begin(), sizes.end(), std::back_inserter(dst_log),
+                           [gamma, multipl](long val) {
+                               return std::pow(std::log(val), gamma) * multipl;
+                           });  //  / (3 - tau)
+            plt::plot(sizes, dst_log);
+        }
+        */
+        // plt::save(std::string("plots/Project/") + folder + std::string("/dist_0.") + std::to_string(k + 1) + std::string("_log_fixed.png"));
+        // plt::clf();
+        // cout << "0." << k + 1 << " is done! Multiplier was " << multipl << ", while actual 1/(3-t) = " << 1. / (3 - tau) << endl;
     }
+
+}
+
+
+void read_and_plot_log(std::string folder, bool loglog) {
+
+    std::string prefix = std::string("plots/Project/") + folder;
+    boost::filesystem::path dir(prefix);
+    if (!(boost::filesystem::exists(dir) && boost::filesystem::is_directory(dir))) {
+        cout << "\"" << folder << "\" is not an existing folder in plots/Project" << endl;
+        return;
+    }
+
+    double gamma = 0, multipl = 0;
+    long n = 0, tmp = 0;
+    vector<double> sizes, dsts, logs;
+    for (int i = 1; i < 10; ++i) {
+        sizes.clear();
+        dsts.clear();
+        logs.clear();
+        gamma += 0.1;
+        std::ifstream in(prefix + std::string("/data/dist_0.") + std::to_string(i) + std::string(".dat"), std::ios::binary);
+        if (!in.is_open())
+            cout << "FUCK YOU" << endl;
+        in.seekg(0, std::ios::beg);
+        
+        in.read((char*)&n, sizeof(n));
+        sizes.resize(n);
+        dsts.resize(n);
+        in.read((char*)&sizes[0], n * sizeof(double));
+        in.read((char*)&dsts[0], n * sizeof(double));
+        in.close();
+
+        multipl = 0;
+        if (loglog) {
+            for (long jj = 0; jj < n; ++jj)
+                multipl += dsts[jj] / std::log(std::log(sizes[jj]));
+            multipl /= n;
+
+            cout << multipl << " ~~~ " << 2 / std::abs(std::log(tau - 2)) << endl;
+
+            std::transform(sizes.begin(), sizes.end(), std::back_inserter(logs), [multipl](double a) {
+                return multipl * std::log(std::log(a));  // / std::abs(std::log(tau - 2));
+            });
+        } else {
+            for (long jj = 0; jj < n; ++jj)
+                multipl += dsts[jj] / std::pow(std::log(sizes[jj]), gamma);
+            multipl /= n;
+
+            cout << multipl << " ~~~ " << 1. / (3 - tau) << endl;
+
+            std::transform(sizes.begin(), sizes.end(), std::back_inserter(logs), [multipl, gamma](double a) {
+                return multipl * std::pow(std::log(a), gamma);  // / std::abs(std::log(tau - 2));
+            });
+        }
+
+        plt::clf();
+        plt::plot(sizes, dsts);
+        plt::plot(sizes, logs);
+        std::string t_s = std::to_string(tau), g_s = std::to_string(gamma);
+        plt::title(std::string("Distances for tau = ") + t_s[0]+t_s[1]+t_s[2]+t_s[3] + std::string(", gamma = ") + g_s[0]+g_s[1]+g_s[2]);
+        plt::xlabel("Graph size (n)");
+        plt::ylabel("Graph average distance");
+        plt::legend({"Computed distances", loglog ? "C log log n" : "C ((log n) to the power gamma)"}, "lower right");
+        plt::save(prefix + std::string("/gamma_0.") + std::to_string(i) + std::string(".png"));
+    }
+
+
+}
+
+
+int main() {
+
+    plot_truncated("sunday_log_20-1000_1trial_tau_2.8", 1, 50, 20, 20, false);
+
+    read_and_plot_log("sunday_log_20-1000_1trial_tau_2.8", false);
 
     // cout << "Tau = " << tau << endl;
     // auto v1 = generate_n_pareto(1, 100, 1000);

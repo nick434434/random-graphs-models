@@ -27,7 +27,7 @@ auto edge_decider = [](double prob) {
 };
 
 static boost::mt19937 randGen(15); //held constant for repeatability
-static double tau = uniform_distribution(generator) + 2 + 1e-10;
+static double tau = 2.8;  // uniform_distribution(generator) + 2 + 1e-10;
 static boost::math::pareto_distribution<> dist(tau, tau);
 static boost::random::uniform_real_distribution<> uniformReal(1.0,10.0); //this range can be adjusted to effect values
 static boost::variate_generator<boost::mt19937&, boost::random::uniform_real_distribution<> > generator_uniform(randGen, uniformReal);
@@ -43,6 +43,6 @@ vector<long> generate_n_pareto(long min, long max, long n);
 
 vector<long> alternative_n_pareto(long n);
 
-vector<long> alternative_n_pareto_truncated(long n, double gamma);
+vector<long> alternative_n_pareto_truncated(long n, double gamma, bool beta_loglog = false);
 
 #endif //NUMERICALASSIGNMENTPS2_PROB_STUFF_H

@@ -78,20 +78,30 @@ vector<long> alternative_n_pareto(long n) {
     vector<long> res(n);
 
     for (long i = 0; i < n; ++i)
-        res[i] = std::trunc( std::pow(1. / uniform_distribution(generator), 1. / (tau - 1)) + 1 );
+        res[i] = (long)std::pow(1. / uniform_distribution(generator), 1. / (tau - 1));
 
     return res;
 }
 
 
-vector<long> alternative_n_pareto_truncated(long n, double gamma) {
-    vector<long> res(n);
-    double beta = 1. / std::pow(log(n), gamma);
-    double n_beta = std::pow(n, beta);
+vector<long> alternative_n_pareto_truncated(long n, double gamma, bool beta_loglog) {
+    vector<double> res(n);
+    double beta = 1. / std::pow(beta_loglog ? log(log(n)) : log(n), gamma);
+    long n_beta = (long)std::pow(n, beta);
+
+    printf("beta = %1.4f, n = %ld, n_beta = %ld\n", beta, n, n_beta);
 
     for (long i = 0; i < n; ++i)
-        while ((res[i] = std::trunc( std::pow(1. / uniform_distribution(generator), 1. / (tau - 1)) + 1 )) >= n_beta);
+        res[i] = uniform_distribution(generator);
 
-    return res;
+    vector<long> transformed;
+    std::transform(res.begin(), res.end(), std::back_inserter(transformed), [n_beta](double a) {
+        long res = (long)std::pow(1 / a, 1 / (tau - 1));
+        while (res > n_beta)
+            res = (long)std::pow(1 / uniform_distribution(generator), 1 / (tau - 1));
+        return res;
+    });
+
+    return transformed;
 }
 

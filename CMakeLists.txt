@@ -21,3 +21,6 @@ add_executable(random-graphs-models ${SOURCE} main.cpp)
 find_library(PythonLibs 2.7)
 target_include_directories(random-graphs-models PRIVATE /home/sv2019/.local/lib/python2.7/site-packages/numpy/core/include)
 target_link_libraries(random-graphs-models /usr/lib/x86_64-linux-gnu/libpython2.7.so)
+
+find_package(Boost COMPONENTS system filesystem REQUIRED)
+target_link_libraries(random-graphs-models ${Boost_FILESYSTEM_LIBRARY} ${Boost_SYSTEM_LIBRARY})
